@@ -1,5 +1,6 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const CopyWebpackPlugin = require("copy-webpack-plugin"); // Step 1: Require the plugin
 
 module.exports = {
   entry: "./src/index.ts",
@@ -28,6 +29,11 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       template: "./src/index.html", // Specify the template file
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: "assets", to: "assets" }, // Step 2: Configure the plugin
+      ],
     }),
   ],
   devServer: {
