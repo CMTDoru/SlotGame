@@ -10,7 +10,9 @@ import {
   TextStyle,
   BlurFilter,
   FillGradient,
+  AnimatedSprite,
 } from "pixi.js";
+import "./style.css";
 
 (async () => {
   if (document.body.querySelector("canvas")) {
@@ -44,6 +46,10 @@ import {
   await Assets.add({ alias: "M4", src: "assets/M4.png" });
   await Assets.add({ alias: "M5", src: "assets/M5.png" });
   await Assets.add({ alias: "M6", src: "assets/M6.png" });
+  await Assets.add({
+    alias: "Explosion",
+    src: "https://pixijs.com/assets/spritesheet/mc.json",
+  });
 
   await Assets.load([
     "9",
@@ -64,10 +70,13 @@ import {
     "M4",
     "M5",
     "M6",
+    "Explosion",
   ]);
 
   const REEL_WIDTH = 160;
   const SYMBOL_SIZE = 150;
+  const SPIN_TIME = 1000;
+  const SPIN_SETTLE_TIME = 0.3;
 
   // Create different slot symbols
   const slotTextures = [
@@ -99,6 +108,27 @@ import {
   const reelsNo = 5;
   const rowsNo = 3;
 
+  // Create gradient fill
+  const fill = new FillGradient(0, 0, 0, 36 * 1.7);
+
+  // Add play text
+  const style = new TextStyle({
+    fontFamily: "Arial",
+    fontSize: 36,
+    fontStyle: "italic",
+    fontWeight: "bold",
+    fill: { fill },
+    stroke: { color: 0x4a1850, width: 5 },
+    dropShadow: {
+      color: 0x000000,
+      angle: Math.PI / 6,
+      blur: 4,
+      distance: 6,
+    },
+    wordWrap: true,
+    wordWrapWidth: 440,
+  });
+
   for (let i = 0; i < reelsNo; i++) {
     const rc = new Container();
 
@@ -119,9 +149,9 @@ import {
 
     // Build the symbols
     for (let j = 0; j < rowsNo + 1; j++) {
-      const symbol = new Sprite(
-        slotTextures[Math.floor(Math.random() * slotTextures.length)]
-      );
+      var texture =
+        slotTextures[Math.floor(Math.random() * slotTextures.length)];
+      const symbol = new Sprite(texture);
       // Scale the symbol to fit symbol area.
 
       symbol.y = j * SYMBOL_SIZE;
@@ -130,6 +160,9 @@ import {
         SYMBOL_SIZE / symbol.height
       );
       symbol.x = Math.round((SYMBOL_SIZE - symbol.width) / 2);
+      symbol.label = `${i}${j}`;
+      var text = new Text({ text: ``, style: style });
+      symbol.addChild(text);
       reel.symbols.push(symbol);
       rc.addChild(symbol);
     }
@@ -151,9 +184,6 @@ import {
     .rect(0, SYMBOL_SIZE * rowsNo + margin, app.screen.width, margin)
     .fill({ color: 0x0 });
 
-  // Create gradient fill
-  const fill = new FillGradient(0, 0, 0, 36 * 1.7);
-
   const colors = [0xffffff, 0x00ff99].map((color) =>
     Color.shared.setValue(color).toNumber()
   );
@@ -162,24 +192,6 @@ import {
     const ratio = index / colors.length;
 
     fill.addColorStop(ratio, number);
-  });
-
-  // Add play text
-  const style = new TextStyle({
-    fontFamily: "Arial",
-    fontSize: 36,
-    fontStyle: "italic",
-    fontWeight: "bold",
-    fill: { fill },
-    stroke: { color: 0x4a1850, width: 5 },
-    dropShadow: {
-      color: 0x000000,
-      angle: Math.PI / 6,
-      blur: 4,
-      distance: 6,
-    },
-    wordWrap: true,
-    wordWrapWidth: 440,
   });
 
   const playText = new Text({ text: "Spin", style: style });
@@ -206,18 +218,37 @@ import {
     startPlay();
   });
 
+  // Set the interactivity.
+  top.eventMode = "static";
+  top.cursor = "pointer";
+  top.addListener("pointerdown", () => {
+    forceOneRandomSymbol();
+  });
+
+  var forceSymbol = false;
+  var forceSymbolIndex = 0;
+
+  function forceOneRandomSymbol(): void {
+    forceSymbol = true;
+    forceSymbolIndex = Math.floor(Math.random() * slotTextures.length);
+  }
+
   let running = false;
 
   // Function to start playing.
-  function startPlay() {
+  function startPlay(): void {
     if (running) return;
     running = true;
+
+    stopWinAnimation();
+
+    clearWinLineValues();
 
     for (let i = 0; i < reels.length; i++) {
       const r = reels[i];
       const extra = Math.floor(Math.random() * 3);
       const target = r.position + 10 + i * 5 + extra;
-      const time = 2500 + i * 600 + extra * 600;
+      const time = SPIN_TIME + i * 600 + extra * 600;
 
       tweenTo(
         r,
@@ -225,26 +256,51 @@ import {
         "position",
         target,
         time,
-        backout(0.5),
+        backout(SPIN_SETTLE_TIME),
         () => {},
         i === reels.length - 1 ? reelsComplete : () => {}
       );
     }
   }
 
+  function clearWinLineValues(): void {
+    // Clear text at the start of each round
+    reels.forEach((reel) => {
+      reel.symbols.forEach((symbol) => {
+        var sym: Sprite = symbol as Sprite;
+        var textField = sym.children[0] as Text;
+        textField.text = "";
+      });
+    });
+  }
+
+  function stopWinAnimation(): void {
+    app.stage.children.forEach((child) => {
+      if (child instanceof AnimatedSprite) {
+        app.stage.removeChild(child);
+      }
+    });
+    if (app.stage.children.length > 3) {
+      stopWinAnimation();
+    }
+  }
+
   // Reels done handler.
-  function reelsComplete() {
+  function reelsComplete(): void {
     running = false;
+    forceSymbol = false;
   }
 
   // Listen for animate update.
   app.ticker.add(() => {
+    var sym: SymbolsList[] = [];
+    var changeAdded = false;
     // Update the slots.
     for (let i = 0; i < reels.length; i++) {
       const r = reels[i];
+      var row: SymbolReelList[] = [];
       // Update blur filter y amount based on speed.
       // This would be better if calculated with time in mind also. Now blur depends on frame rate.
-
       r.blur.blurY = (r.position - r.previousPosition) * 8;
       r.previousPosition = r.position;
 
@@ -258,16 +314,168 @@ import {
           // Detect going over and swap a texture.
           // This should in proper product be determined from some logical reel.
           s.texture =
-            slotTextures[Math.floor(Math.random() * slotTextures.length)];
+            slotTextures[
+              forceSymbol
+                ? forceSymbolIndex
+                : Math.floor(Math.random() * slotTextures.length)
+            ];
+
           s.scale.x = s.scale.y = Math.min(
             SYMBOL_SIZE / s.texture.width,
             SYMBOL_SIZE / s.texture.height
           );
           s.x = Math.round((SYMBOL_SIZE - s.width) / 2);
+          changeAdded = true;
         }
+        var name = s.texture.label?.split("/")[4];
+
+        row.push({
+          sprite: s,
+          texture: name ?? "",
+          x: s.x,
+          y: s.y,
+        });
+      }
+      sym.push(row);
+    }
+
+    checkWinConditions(sym, changeAdded);
+  });
+
+  var isWinState = false;
+  var winBoard: SymbolReelList[] = [];
+
+  function checkWinConditions(
+    symbols: SymbolsList[],
+    changeAdded: Boolean
+  ): void {
+    if (!changeAdded) {
+      return;
+    }
+    winBoard = [];
+    isWinState = false;
+
+    symbols.forEach((reel) => {
+      reel.sort((a, b) => a.y - b.y);
+    });
+    const numberOfReels = symbols.length;
+    const numberOfRows = symbols[0].length;
+
+    for (let i = 0; i < numberOfRows; i++) {
+      const firstSymbol = symbols[0][i].texture;
+      const secondSymbol = symbols[1][i].texture;
+      const thirdSymbol = symbols[2][i].texture;
+      const fourthSymbol = symbols[3][i].texture;
+      const fifthSymbol = symbols[4][i].texture;
+
+      if (
+        firstSymbol === secondSymbol &&
+        secondSymbol === thirdSymbol &&
+        thirdSymbol === fourthSymbol &&
+        fourthSymbol === fifthSymbol
+      ) {
+        winBoard.push(
+          symbols[0][i],
+          symbols[1][i],
+          symbols[2][i],
+          symbols[3][i],
+          symbols[4][i]
+        );
+        isWinState = true;
+      }
+    }
+  }
+
+  app.ticker.add(() => {
+    if (isWinState && !running) {
+      isWinState = false;
+
+      const lowWinSymbols = ["9", "10"];
+      if (
+        lowWinSymbols.some((symbol) => winBoard[0].texture.includes(symbol))
+      ) {
+        winBoard.forEach((symbol) => {
+          var sym: Sprite = symbol.sprite as Sprite;
+          var textField = sym.children[0] as Text;
+          textField.text = "5€";
+          textField.setSize(36);
+          textField.x = Math.round(SYMBOL_SIZE / 2);
+          textField.y = Math.round(SYMBOL_SIZE / 2);
+        });
+        playWinAnimation(5);
+      }
+      const mediumWinSymbols = ["M1", "M2", "M3", "M4", "M5", "M6"];
+      if (
+        mediumWinSymbols.some((symbol) => winBoard[0].texture.includes(symbol))
+      ) {
+        winBoard.forEach((symbol) => {
+          var sym: Sprite = symbol.sprite as Sprite;
+          var textField = sym.children[0] as Text;
+          textField.text = "10€";
+          textField.setSize(50);
+          textField.x = Math.round(SYMBOL_SIZE / 2);
+          textField.y = Math.round(SYMBOL_SIZE / 2);
+        });
+        playWinAnimation(10);
+      }
+
+      const highWinSymbols = ["H1", "H2", "H3", "H4", "H5", "H6"];
+      if (
+        highWinSymbols.some((symbol) => winBoard[0].texture.includes(symbol))
+      ) {
+        winBoard.forEach((symbol) => {
+          var sym: Sprite = symbol.sprite as Sprite;
+          var textField = sym.children[0] as Text;
+          textField.text = "20€";
+          textField.setSize(60);
+          textField.x = Math.round(SYMBOL_SIZE / 2);
+          textField.y = Math.round(SYMBOL_SIZE / 2);
+        });
+        playWinAnimation(20);
+      }
+
+      const specialWinSymbols = ["A", "J", "K", "Q"];
+      if (
+        specialWinSymbols.some((symbol) => winBoard[0].texture.includes(symbol))
+      ) {
+        winBoard.forEach((symbol) => {
+          var sym: Sprite = symbol.sprite as Sprite;
+          var textField = sym.children[0] as Text;
+          textField.text = "50€";
+          textField.setSize(80);
+          textField.x = Math.round(SYMBOL_SIZE / 2);
+          textField.y = Math.round(SYMBOL_SIZE / 2);
+        });
+        playWinAnimation(50);
       }
     }
   });
+
+  function playWinAnimation(noOfExplosions: number): void {
+    // Create an array to store the textures
+    const explosionTextures = [];
+    let i;
+
+    for (i = 0; i < 26; i++) {
+      const texture = Texture.from(`Explosion_Sequence_A ${i + 1}.png`);
+
+      explosionTextures.push(texture);
+    }
+
+    // Create and randomly place the animated explosion sprites on the stage
+    for (i = 0; i < noOfExplosions; i++) {
+      // Create an explosion AnimatedSprite
+      const explosion = new AnimatedSprite(explosionTextures);
+
+      explosion.x = Math.random() * app.screen.width;
+      explosion.y = Math.random() * app.screen.height;
+      explosion.anchor.set(0.5);
+      explosion.rotation = Math.random() * Math.PI;
+      explosion.scale.set(0.75 + Math.random() * 0.5);
+      explosion.gotoAndPlay((Math.random() * 26) | 0);
+      app.stage.addChild(explosion);
+    }
+  }
 
   // Very simple tweening utility function. This should be replaced with a proper tweening library in a real product.
   const tweening: Tween[] = [];
@@ -281,7 +489,7 @@ import {
     easing: (t: any) => number,
     onchange: (t: any) => void | null,
     oncomplete: (t: any) => void | null
-  ) {
+  ): Tween {
     const tween: Tween = {
       object,
       reelNo,
@@ -328,7 +536,7 @@ import {
 
   // Backout function from tweenjs.
   // https://github.com/CreateJS/TweenJS/blob/master/src/tweenjs/Ease.js
-  function backout(amount: number) {
+  function backout(amount: number): (t: number) => number {
     return (t: number) => --t * t * ((amount + 1) * t + amount) + 1;
   }
 })();
@@ -352,4 +560,13 @@ type Tween = {
   change: (t: any) => void | null;
   complete: (t: any) => void | null;
   start: number;
+};
+
+type SymbolsList = SymbolReelList[];
+
+type SymbolReelList = {
+  sprite: Sprite;
+  texture: string;
+  x: number;
+  y: number;
 };
