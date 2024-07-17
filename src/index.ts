@@ -29,23 +29,41 @@ import "./style.css";
   document.body.appendChild(app.canvas);
 
   await Assets.add({ alias: "9", src: "assets/9.png" });
+  await Assets.add({ alias: "9_connect", src: "assets/9_connect.png" });
   await Assets.add({ alias: "10", src: "assets/10.png" });
+  await Assets.add({ alias: "10_connect", src: "assets/10_connect.png" });
   await Assets.add({ alias: "A", src: "assets/A.png" });
+  await Assets.add({ alias: "A_connect", src: "assets/A_connect.png" });
   await Assets.add({ alias: "H1", src: "assets/H1.png" });
+  await Assets.add({ alias: "H1_connect", src: "assets/H1_connect.png" });
   await Assets.add({ alias: "H2", src: "assets/H2.png" });
+  await Assets.add({ alias: "H2_connect", src: "assets/H2_connect.png" });
   await Assets.add({ alias: "H3", src: "assets/H3.png" });
+  await Assets.add({ alias: "H3_connect", src: "assets/H3_connect.png" });
   await Assets.add({ alias: "H4", src: "assets/H4.png" });
+  await Assets.add({ alias: "H4_connect", src: "assets/H4_connect.png" });
   await Assets.add({ alias: "H5", src: "assets/H5.png" });
+  await Assets.add({ alias: "H5_connect", src: "assets/H5_connect.png" });
   await Assets.add({ alias: "H6", src: "assets/H6.png" });
+  await Assets.add({ alias: "H6_connect", src: "assets/H6_connect.png" });
   await Assets.add({ alias: "J", src: "assets/J.png" });
+  await Assets.add({ alias: "J_connect", src: "assets/J_connect.png" });
   await Assets.add({ alias: "K", src: "assets/K.png" });
+  await Assets.add({ alias: "K_connect", src: "assets/K_connect.png" });
   await Assets.add({ alias: "Q", src: "assets/Q.png" });
+  await Assets.add({ alias: "Q_connect", src: "assets/Q_connect.png" });
   await Assets.add({ alias: "M1", src: "assets/M1.png" });
+  await Assets.add({ alias: "M1_connect", src: "assets/M1_connect.png" });
   await Assets.add({ alias: "M2", src: "assets/M2.png" });
+  await Assets.add({ alias: "M2_connect", src: "assets/M2_connect.png" });
   await Assets.add({ alias: "M3", src: "assets/M3.png" });
+  await Assets.add({ alias: "M3_connect", src: "assets/M3_connect.png" });
   await Assets.add({ alias: "M4", src: "assets/M4.png" });
+  await Assets.add({ alias: "M4_connect", src: "assets/M4_connect.png" });
   await Assets.add({ alias: "M5", src: "assets/M5.png" });
+  await Assets.add({ alias: "M5_connect", src: "assets/M5_connect.png" });
   await Assets.add({ alias: "M6", src: "assets/M6.png" });
+  await Assets.add({ alias: "M6_connect", src: "assets/M6_connect.png" });
   await Assets.add({
     alias: "Explosion",
     src: "https://pixijs.com/assets/spritesheet/mc.json",
@@ -71,6 +89,24 @@ import "./style.css";
     "M5",
     "M6",
     "Explosion",
+    "9_connect",
+    "10_connect",
+    "A_connect",
+    "H1_connect",
+    "H2_connect",
+    "H3_connect",
+    "H4_connect",
+    "H5_connect",
+    "H6_connect",
+    "J_connect",
+    "K_connect",
+    "Q_connect",
+    "M1_connect",
+    "M2_connect",
+    "M3_connect",
+    "M4_connect",
+    "M5_connect",
+    "M6_connect",
   ]);
 
   const REEL_WIDTH = 160;
@@ -107,6 +143,14 @@ import "./style.css";
   // Numbers of reels
   const reelsNo = 5;
   const rowsNo = 3;
+
+  var _isWinState = false;
+  var forceSymbol = false;
+  let _isSpinning = false;
+
+  var forceSymbolIndex = 0;
+
+  var winBoard: SymbolReelList[] = [];
 
   // Create gradient fill
   const fill = new FillGradient(0, 0, 0, 36 * 1.7);
@@ -225,20 +269,20 @@ import "./style.css";
     forceOneRandomSymbol();
   });
 
-  var forceSymbol = false;
-  var forceSymbolIndex = 0;
-
+  /**
+   * Force one random symbol on the reels.
+   */
   function forceOneRandomSymbol(): void {
     forceSymbol = true;
     forceSymbolIndex = Math.floor(Math.random() * slotTextures.length);
   }
 
-  let running = false;
-
   // Function to start playing.
   function startPlay(): void {
-    if (running) return;
-    running = true;
+    if (_isSpinning) return;
+    _isSpinning = true;
+
+    clearLandWinSymbols();
 
     stopWinAnimation();
 
@@ -263,6 +307,19 @@ import "./style.css";
     }
   }
 
+  /**
+   * Clear the landing win symbols.
+   */
+  function clearLandWinSymbols(): void {
+    winBoard.forEach((symbol) => {
+      var sym: Sprite = symbol.sprite as Sprite;
+      sym.texture = Texture.from(`assets/${symbol.texture}`);
+    });
+  }
+
+  /**
+   * Clear the win line values.
+   */
   function clearWinLineValues(): void {
     // Clear text at the start of each round
     reels.forEach((reel) => {
@@ -274,6 +331,9 @@ import "./style.css";
     });
   }
 
+  /**
+   * Stop the win animation.
+   */
   function stopWinAnimation(): void {
     app.stage.children.forEach((child) => {
       if (child instanceof AnimatedSprite) {
@@ -287,7 +347,7 @@ import "./style.css";
 
   // Reels done handler.
   function reelsComplete(): void {
-    running = false;
+    _isSpinning = false;
     forceSymbol = false;
   }
 
@@ -342,9 +402,12 @@ import "./style.css";
     checkWinConditions(sym, changeAdded);
   });
 
-  var isWinState = false;
-  var winBoard: SymbolReelList[] = [];
-
+  /**
+   * Check the win conditions.
+   * @param symbols
+   * @param changeAdded
+   * @returns void
+   */
   function checkWinConditions(
     symbols: SymbolsList[],
     changeAdded: Boolean
@@ -353,7 +416,7 @@ import "./style.css";
       return;
     }
     winBoard = [];
-    isWinState = false;
+    _isWinState = false;
 
     symbols.forEach((reel) => {
       reel.sort((a, b) => a.y - b.y);
@@ -381,14 +444,14 @@ import "./style.css";
           symbols[3][i],
           symbols[4][i]
         );
-        isWinState = true;
+        _isWinState = true;
       }
     }
   }
 
   app.ticker.add(() => {
-    if (isWinState && !running) {
-      isWinState = false;
+    if (_isWinState && !_isSpinning) {
+      _isWinState = false;
 
       const lowWinSymbols = ["9", "10"];
       if (
@@ -396,6 +459,7 @@ import "./style.css";
       ) {
         winBoard.forEach((symbol) => {
           var sym: Sprite = symbol.sprite as Sprite;
+          sym.texture = showLandingSymbols(winBoard[0].texture);
           var textField = sym.children[0] as Text;
           textField.text = "5€";
           textField.setSize(36);
@@ -410,6 +474,7 @@ import "./style.css";
       ) {
         winBoard.forEach((symbol) => {
           var sym: Sprite = symbol.sprite as Sprite;
+          sym.texture = showLandingSymbols(winBoard[0].texture);
           var textField = sym.children[0] as Text;
           textField.text = "10€";
           textField.setSize(50);
@@ -425,6 +490,7 @@ import "./style.css";
       ) {
         winBoard.forEach((symbol) => {
           var sym: Sprite = symbol.sprite as Sprite;
+          sym.texture = showLandingSymbols(winBoard[0].texture);
           var textField = sym.children[0] as Text;
           textField.text = "20€";
           textField.setSize(60);
@@ -440,6 +506,7 @@ import "./style.css";
       ) {
         winBoard.forEach((symbol) => {
           var sym: Sprite = symbol.sprite as Sprite;
+          sym.texture = showLandingSymbols(winBoard[0].texture);
           var textField = sym.children[0] as Text;
           textField.text = "50€";
           textField.setSize(80);
@@ -451,6 +518,20 @@ import "./style.css";
     }
   });
 
+  /**
+   * Show the landing symbols.
+   * @param name Symbol name
+   * @returns
+   */
+  function showLandingSymbols(name: String): Texture {
+    var fileName = name.split(".")[0];
+    return Texture.from(`assets/${fileName}_connect.png`);
+  }
+
+  /**
+   * Play the win animation.
+   * @param noOfExplosions number of explosions
+   */
   function playWinAnimation(noOfExplosions: number): void {
     // Create an array to store the textures
     const explosionTextures = [];
