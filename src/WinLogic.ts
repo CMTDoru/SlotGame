@@ -7,6 +7,7 @@ import {
   Texture,
 } from "pixi.js";
 import { Reel, SymbolReelList, SymbolsList } from "./Types";
+import { ReelTextZone } from "./ReelTextZone";
 
 const ROWS_NO = 3;
 const SYMBOL_SIZE = 150;
@@ -217,6 +218,7 @@ export class WinLogic {
           sym.texture = this.showLandingSymbols(this._winBoard[0].texture);
           var textField = sym.children[0] as Text;
           textField.text = "5€";
+          this.addToTotalWin("5");
           textField.setSize(36);
           textField.x = Math.round(SYMBOL_SIZE / 2);
           textField.y = Math.round(SYMBOL_SIZE / 2);
@@ -234,6 +236,7 @@ export class WinLogic {
           sym.texture = this.showLandingSymbols(this._winBoard[0].texture);
           var textField = sym.children[0] as Text;
           textField.text = "10€";
+          this.addToTotalWin("10");
           textField.setSize(50);
           textField.x = Math.round(SYMBOL_SIZE / 2);
           textField.y = Math.round(SYMBOL_SIZE / 2);
@@ -252,6 +255,7 @@ export class WinLogic {
           sym.texture = this.showLandingSymbols(this._winBoard[0].texture);
           var textField = sym.children[0] as Text;
           textField.text = "20€";
+          this.addToTotalWin("20");
           textField.setSize(60);
           textField.x = Math.round(SYMBOL_SIZE / 2);
           textField.y = Math.round(SYMBOL_SIZE / 2);
@@ -270,6 +274,7 @@ export class WinLogic {
           sym.texture = this.showLandingSymbols(this._winBoard[0].texture);
           var textField = sym.children[0] as Text;
           textField.text = "50€";
+          this.addToTotalWin("50");
           textField.setSize(80);
           textField.x = Math.round(SYMBOL_SIZE / 2);
           textField.y = Math.round(SYMBOL_SIZE / 2);
@@ -317,5 +322,12 @@ export class WinLogic {
       explosion.gotoAndPlay((Math.random() * 26) | 0);
       this._app.stage.addChild(explosion);
     }
+  }
+
+  private addToTotalWin(value: string): void {
+    const reelTextZone = this._app.stage.children[2] as ReelTextZone;
+    var currentValue = reelTextZone.totalValue;
+
+    reelTextZone.totalValue = currentValue + parseInt(value);
   }
 }

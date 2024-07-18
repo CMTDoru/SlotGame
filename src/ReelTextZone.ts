@@ -36,6 +36,7 @@ export class ReelTextZone extends Graphics {
   private _reelContainer: ReelContainer;
   // Build top & bottom covers and position reelContainer
   private _margin: number;
+  private _totalValue: Text;
   private _symbolSize = 150;
   private _rowNo = 3;
 
@@ -49,6 +50,7 @@ export class ReelTextZone extends Graphics {
     this._name = name;
     this._reelContainer = reelContainer;
     this._margin = (app.screen.height - this._symbolSize * this._rowNo) / 2;
+    this._totalValue = new Text();
 
     this.updateColors();
     this.drawTextZone(name);
@@ -106,6 +108,25 @@ export class ReelTextZone extends Graphics {
         this._margin +
         Math.round((this._margin - playText.height) / 2);
       this.addChild(playText);
+
+      this._totalValue = new Text({ text: "Total: 0€", style: style });
+      this._totalValue.x = Math.round(
+        (this.width - this._totalValue.width) / 4
+      );
+      this._totalValue.y =
+        this._app.screen.height -
+        this._margin +
+        Math.round((this._margin - playText.height) / 2);
+
+      this.addChild(this._totalValue);
     }
+  }
+
+  public set totalValue(value: number) {
+    this._totalValue.text = `Total: ${value}€`;
+  }
+
+  public get totalValue(): number {
+    return parseInt(this._totalValue.text.split(" ")[1]);
   }
 }
