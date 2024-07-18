@@ -57,6 +57,10 @@ export class ReelContainer extends Container {
     this._winLogic = new WinLogic(app);
   }
 
+  public resize(): void {
+    this.x = Math.round((window.innerWidth - this.width) / 2);
+  }
+
   private createMainContainer(): void {
     for (let i = 0; i < reelsNo; i++) {
       const rc = new Container();

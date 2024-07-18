@@ -162,4 +162,10 @@ import { ReelTextZone } from "./ReelTextZone";
     if (reelContainer !== null && reelContainer !== undefined)
       reelContainer.checkForSpin();
   });
+
+  window.addEventListener("resize", () => {
+    top.width = window.innerWidth;
+    bottom.width = window.innerWidth;
+    reelContainer.resize();
+  });
 })();
