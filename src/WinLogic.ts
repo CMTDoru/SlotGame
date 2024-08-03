@@ -83,9 +83,6 @@ export class WinLogic {
 
     symbols.forEach((reel) => {
       reel.sort((a, b) => a.y - b.y);
-    });
-
-    symbols.forEach((reel) => {
       if (reel.length > ROWS_NO) reel.shift();
     });
 
